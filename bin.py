@@ -644,26 +644,26 @@ def generate_sticker_labels(excel_file_path, output_pdf_path, status_callback=No
             )
 
         qr_table.setStyle(TableStyle([
-            ('GRID', (0, 0), (-1, -1), 1.2, colors.Color(0, 0, 0, alpha=0.95)),  # Darker grid lines
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]))
 
-        # Create bottom section with MTM table and QR code
-        bottom_section_data = [[mtm_table, qr_image if qr_image else qr_table]]
-        
-        bottom_table = Table(
-            bottom_section_data,
-            colWidths=[mtm_box_width * 3, qr_width],
-            rowHeights=[max(mtm_row_height, qr_height)]
+        # Adjust spacing for better layout
+        left_spacer_width = 0.8*cm
+        right_spacer_width = content_width - 3*mtm_box_width - qr_width - left_spacer_width
+
+         bottom_row = Table(
+            [[mtm_table, "", qr_table, ""]],
+            colWidths=[3*mtm_box_width, left_spacer_width, qr_width, right_spacer_width],
+            rowHeights=[qr_height]
         )
-
-        bottom_table.setStyle(TableStyle([
+        
+        bottom_row.setStyle(TableStyle([
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]))
 
-        elements.append(bottom_table)
+        elements.append(bottom_row)
 
         # Add all elements for this sticker
         all_elements.extend(elements)
@@ -686,7 +686,7 @@ def generate_sticker_labels(excel_file_path, output_pdf_path, status_callback=No
 def main():
     st.set_page_config(page_title="Sticker Label Generator", layout="wide")
     
-    st.title("🏷️ Sticker Label Generator")
+    st.title("🏷️ JTAC Bin Label Generator")
     st.markdown("Generate custom sticker labels with QR codes from Excel/CSV files")
 
     # File upload
