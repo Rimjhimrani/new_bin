@@ -652,7 +652,7 @@ def generate_sticker_labels(excel_file_path, output_pdf_path, status_callback=No
         left_spacer_width = 0.8*cm
         right_spacer_width = content_width - 3*mtm_box_width - qr_width - left_spacer_width
 
-         bottom_row = Table(
+        bottom_row = Table(
             [[mtm_table, "", qr_table, ""]],
             colWidths=[3*mtm_box_width, left_spacer_width, qr_width, right_spacer_width],
             rowHeights=[qr_height]
