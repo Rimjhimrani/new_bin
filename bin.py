@@ -50,6 +50,72 @@ bold_style = ParagraphStyle(name='Bold', fontName='Helvetica-Bold', fontSize=12,
 desc_style = ParagraphStyle(name='Description', fontName='Helvetica', fontSize=8, alignment=TA_CENTER, leading=12)
 qty_style = ParagraphStyle(name='Quantity', fontName='Helvetica', fontSize=11, alignment=TA_CENTER, leading=12)
 
+def get_dynamic_part_no_style(text):
+    """
+    Dynamically adjust font size for Part No based on text length
+    """
+    text_length = len(str(text))
+    
+    if text_length <= 12:
+        font_size = 16
+        leading = 18
+    elif text_length <= 14:
+        font_size = 16
+        leading = 18
+    elif text_length <= 18:
+        font_size = 14
+        leading = 16
+    elif text_length <= 22:
+        font_size = 12
+        leading = 14
+    elif text_length <= 25:
+        font_size = 10
+        leading = 12
+    else:
+        font_size = 8
+        leading = 10
+    
+    return ParagraphStyle(
+        name='DynamicPartNo',
+        fontName='Helvetica-Bold',
+        fontSize=font_size,
+        alignment=TA_CENTER,
+        leading=leading
+    )
+
+def get_dynamic_description_style(text):
+    """
+    Dynamically adjust font size for Description based on text length
+    """
+    text_length = len(str(text))
+    
+    if text_length <= 30:
+        font_size = 10
+        leading = 12
+    elif text_length <= 50:
+        font_size = 9
+        leading = 11
+    elif text_length <= 70:
+        font_size = 8
+        leading = 10
+    elif text_length <= 90:
+        font_size = 7
+        leading = 9
+    elif text_length <= 120:
+        font_size = 6
+        leading = 8
+    else:
+        font_size = 5
+        leading = 7
+    
+    return ParagraphStyle(
+        name='DynamicDescription',
+        fontName='Helvetica',
+        fontSize=font_size,
+        alignment=TA_CENTER,
+        leading=leading
+    )
+
 def find_bus_model_column(df_columns):
     """
     Enhanced function to find the bus model column with better detection
@@ -436,10 +502,14 @@ def generate_sticker_labels(excel_file_path, output_pdf_path, status_callback=No
         qty_row_height = 0.5*cm
         location_row_height = 0.5*cm
 
-        # Main table data
+        # Create dynamic styles for Part No and Description
+        part_no_style = get_dynamic_part_no_style(part_no)
+        desc_style_dynamic = get_dynamic_description_style(desc)
+
+        # Main table data with dynamic font sizing
         main_table_data = [
-            ["Part No", Paragraph(f"{part_no}", bold_style)],
-            ["Description", Paragraph(desc[:47] + "..." if len(desc) > 50 else desc, desc_style)],
+            ["Part No", Paragraph(f"{part_no}", part_no_style)],
+            ["Description", Paragraph(desc, desc_style_dynamic)],
             ["Qty/Bin", Paragraph(str(qty_bin), qty_style)]
         ]
 
@@ -598,43 +668,54 @@ def generate_sticker_labels(excel_file_path, output_pdf_path, status_callback=No
             )
 
         qr_table.setStyle(TableStyle([
+            ('GRID', (0, 0), (-1, -1), 1.2, colors.Color(0, 0, 0, alpha=0.95)),  # Darker grid lines
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]))
 
-        # Adjust spacing for better layout
-        left_spacer_width = 0.8*cm
-        right_spacer_width = content_width - 3*mtm_box_width - qr_width - left_spacer_width
+        # Bottom section layout
+        bottom_section_data = [
+            [mtm_table, qr_table]
+        ]
 
-        # Combine MTM boxes and QR code in one row with better spacing
-        bottom_row = Table(
-            [[mtm_table, "", qr_table, ""]],
-            colWidths=[3*mtm_box_width, left_spacer_width, qr_width, right_spacer_width],
-            rowHeights=[qr_height]
+        # Calculate remaining width for spacing
+        remaining_width = content_width - (mtm_box_width * 3) - qr_width
+        spacing_width = remaining_width / 2
+
+        bottom_table = Table(
+            bottom_section_data,
+            colWidths=[mtm_box_width * 3, qr_width],
+            rowHeights=[max(mtm_row_height, qr_height)]
         )
 
-        bottom_row.setStyle(TableStyle([
+        bottom_table.setStyle(TableStyle([
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]))
 
-        elements.append(bottom_row)
+        elements.append(bottom_table)
 
-        # Add all elements for this sticker to the document
+        # Add all elements for this sticker
         all_elements.extend(elements)
-
-        # Add page break after each sticker (except the last one)
-        if index < len(df) - 1:
+        
+        # Add page break between stickers (except for the last one)
+        if index < total_rows - 1:
             all_elements.append(PageBreak())
 
-    # Build the document
+    # Build the PDF with border
     try:
-        # Pass the draw_border function to build to add border box
+        if status_callback:
+            status_callback("Building PDF document...")
+        else:
+            st.write("Building PDF document...")
+            
         doc.build(all_elements, onFirstPage=draw_border, onLaterPages=draw_border)
+        
         if status_callback:
             status_callback(f"PDF generated successfully: {output_pdf_path}")
         else:
             st.success(f"PDF generated successfully: {output_pdf_path}")
+        
         return output_pdf_path
     except Exception as e:
         error_msg = f"Error building PDF: {e}"
@@ -642,234 +723,127 @@ def generate_sticker_labels(excel_file_path, output_pdf_path, status_callback=No
             status_callback(error_msg)
         else:
             st.error(error_msg)
-            import traceback
-            traceback.print_exc()
+        import traceback
+        traceback.print_exc()
         return None
 
 def main():
-    """Main Streamlit application"""
-    st.set_page_config(page_title="Bin Label Generator", page_icon="🏷️", layout="wide")
-    
-    st.title("🏷️ Bin Label Generator")
-    st.markdown(
-        "<p style='font-size:18px; font-style:italic; margin-top:-10px; text-align:left;'>"
-        "Designed and Developed by Agilomatrix</p>",
-        unsafe_allow_html=True
-    )
+    st.title("🏷️ Sticker Label Generator")
+    st.write("Upload an Excel file to generate professional sticker labels with QR codes")
 
-    st.markdown("---")
-    
-    # Sidebar for configuration
-    st.sidebar.header("Configuration")
-    
-    # File upload
-    st.header("📁 File Upload")
+    # File uploader
     uploaded_file = st.file_uploader(
-        "Choose an Excel or CSV file",
+        "Choose an Excel or CSV file", 
         type=['xlsx', 'xls', 'csv'],
         help="Upload your Excel or CSV file containing part information"
     )
-    
+
     if uploaded_file is not None:
-        # Create temporary file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[1]) as tmp_file:
-            tmp_file.write(uploaded_file.getvalue())
-            temp_input_path = tmp_file.name
+        # Save uploaded file temporarily
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp_file:
+            tmp_file.write(uploaded_file.read())
+            temp_file_path = tmp_file.name
+
+        st.success("File uploaded successfully!")
         
-        # Display file info
-        st.success(f"✅ File uploaded: {uploaded_file.name}")
-        
-        # Preview data
-        try:
-            if uploaded_file.name.lower().endswith('.csv'):
-                preview_df = pd.read_csv(temp_input_path).head(5)
-            else:
-                preview_df = pd.read_excel(temp_input_path).head(5)
+        # Show file info
+        st.info(f"File: {uploaded_file.name} ({uploaded_file.size} bytes)")
+
+        # Generate labels button
+        if st.button("🚀 Generate Sticker Labels", type="primary"):
+            # Create progress bar and status text
+            progress_bar = st.progress(0)
+            status_text = st.empty()
             
-            st.subheader("📊 Data Preview (First 5 rows)")
-            st.dataframe(preview_df, use_container_width=True)
-            
-        except Exception as e:
-            st.error(f"Error previewing file: {e}")
-            return
-        
-        # Column mapping section
-        st.subheader("🔧 Column Detection")
-        
-        # Auto-detect columns and show them
-        try:
-            if uploaded_file.name.lower().endswith('.csv'):
-                df_full = pd.read_csv(temp_input_path)
-            else:
-                df_full = pd.read_excel(temp_input_path)
-            
-            # Show detected columns
-            cols_upper = [col.upper() if isinstance(col, str) else col for col in df_full.columns]
-            
-            # Auto-detect key columns
-            part_no_col = next((col for col in cols_upper if 'PART' in col and ('NO' in col or 'NUM' in col or '#' in col)),
-                             next((col for col in cols_upper if col in ['PARTNO', 'PART']), cols_upper[0] if cols_upper else ''))
-            
-            desc_col = next((col for col in cols_upper if 'DESC' in col),
-                           next((col for col in cols_upper if 'NAME' in col), cols_upper[1] if len(cols_upper) > 1 else ''))
-            
-            qty_bin_col = next((col for col in cols_upper if 'QTY/BIN' in col or 'QTY_BIN' in col or 'QTYBIN' in col), 
-                              next((col for col in cols_upper if 'QTY' in col and 'BIN' in col), 
-                                   next((col for col in cols_upper if 'QTY' in col), '')))
-            
-            loc_col = next((col for col in cols_upper if 'LOC' in col or 'POS' in col or 'LOCATION' in col), '')
-            
-            qty_veh_col = next((col for col in cols_upper if any(term in col for term in ['QTY/VEH', 'QTY_VEH', 'QTY PER VEH', 'QTYVEH'])), '')
-            
-            bus_model_col = find_bus_model_column(df_full.columns.tolist())
-            
-            # Display detected columns
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.info(f"**Part Number Column:** {part_no_col}")
-                st.info(f"**Description Column:** {desc_col}")
-                st.info(f"**Location Column:** {loc_col}")
-                
-            with col2:
-                st.info(f"**Qty/Bin Column:** {qty_bin_col}")
-                st.info(f"**Qty/Vehicle Column:** {qty_veh_col if qty_veh_col else 'Not detected'}")
-                st.info(f"**Bus Model Column:** {bus_model_col if bus_model_col else 'Not detected'}")
-            
-        except Exception as e:
-            st.error(f"Error analyzing columns: {e}")
-            return
-        
-        # Generate labels section
-        st.subheader("🚀 Generate Labels")
-        
-        col1, col2, col3 = st.columns([1, 1, 2])
-        
-        with col1:
-            if st.button("🏷️ Generate PDF Labels", type="primary", use_container_width=True):
-                # Create progress container
-                progress_container = st.empty()
-                status_container = st.empty()
-                
-                # Create temporary output file
-                with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_output:
-                    temp_output_path = tmp_output.name
-                
-                # Progress tracking
-                def update_status(message):
-                    status_container.info(f"📊 {message}")
-                
-                try:
-                    # Generate the PDF
-                    update_status("Starting label generation...")
-                    
-                    result_path = generate_sticker_labels(
-                        temp_input_path, 
-                        temp_output_path,
-                        status_callback=update_status
-                    )
-                    
-                    if result_path:
-                        # Success - provide download
-                        with open(result_path, 'rb') as pdf_file:
-                            pdf_data = pdf_file.read()
-                        
-                        status_container.success("✅ Labels generated successfully!")
-                        
-                        # Download button
-                        st.download_button(
-                            label="📥 Download PDF Labels",
-                            data=pdf_data,
-                            file_name=f"sticker_labels_{uploaded_file.name.split('.')[0]}.pdf",
-                            mime="application/pdf",
-                            use_container_width=True
-                        )
-                        
-                        # Show file size
-                        file_size = len(pdf_data) / 1024  # KB
-                        st.info(f"📄 PDF size: {file_size:.1f} KB | Pages: {len(df_full)}")
-                        
-                    else:
-                        status_container.error("❌ Failed to generate labels")
-                        
-                except Exception as e:
-                    status_container.error(f"❌ Error: {str(e)}")
-                    st.exception(e)
-                
-                finally:
-                    # Cleanup temporary files
+            def update_status(message):
+                status_text.text(message)
+                # Simple progress estimation based on message content
+                if "Creating sticker" in message and "of" in message:
                     try:
-                        if os.path.exists(temp_input_path):
-                            os.unlink(temp_input_path)
-                        if os.path.exists(temp_output_path):
-                            os.unlink(temp_output_path)
+                        # Extract current/total from message
+                        parts = message.split()
+                        current = int(parts[2])
+                        total = int(parts[4])
+                        progress = current / total
+                        progress_bar.progress(progress)
                     except:
                         pass
-        
-        with col2:
-            if st.button("🔍 Preview Sample", use_container_width=True):
-                st.info("Preview functionality - shows first label design")
-                # You could add preview functionality here
-        
-        # Additional information
-        st.subheader("ℹ️ Label Information")
-        
-        info_col1, info_col2 = st.columns(2)
-        
-        with info_col1:
-            st.markdown("""
-            **Label Features:**
-            - 📏 Standard sticker size (10cm x 15cm)
-            - 🔢 QR code for each part
-            - 📍 Location tracking
-            - 🚌 Bus model detection (7M, 9M, 12M)
-            - 📦 Quantity per bin/vehicle
-            """)
-        
-        with info_col2:
-            st.markdown("""
-            **Supported Columns:**
-            - Part Number/Part No
-            - Description/Name
-            - Location/Position
-            - Qty/Bin, Quantity
-            - Qty/Veh, Qty per Vehicle
-            - Bus Model/Vehicle Type
-            - Store Location
-            """)
+            
+            # Generate output filename
+            output_filename = f"sticker_labels_{uploaded_file.name.split('.')[0]}.pdf"
+            output_path = os.path.join(tempfile.gettempdir(), output_filename)
+            
+            try:
+                # Generate the PDF
+                result_path = generate_sticker_labels(temp_file_path, output_path, update_status)
+                
+                if result_path:
+                    progress_bar.progress(1.0)
+                    status_text.text("✅ PDF generation completed!")
+                    
+                    # Read the generated PDF
+                    with open(result_path, 'rb') as pdf_file:
+                        pdf_data = pdf_file.read()
+                    
+                    # Provide download button
+                    st.download_button(
+                        label="📥 Download Sticker Labels PDF",
+                        data=pdf_data,
+                        file_name=output_filename,
+                        mime="application/pdf",
+                        type="primary"
+                    )
+                    
+                    st.success(f"✨ Successfully generated {output_filename}!")
+                    
+                    # Clean up temporary files
+                    try:
+                        os.unlink(temp_file_path)
+                        os.unlink(result_path)
+                    except:
+                        pass
+                        
+                else:
+                    st.error("Failed to generate PDF. Please check your file format and try again.")
+                    
+            except Exception as e:
+                st.error(f"An error occurred: {str(e)}")
+                import traceback
+                st.code(traceback.format_exc())
     
-    else:
-        # Instructions when no file is uploaded
-        st.info("👆 Please upload an Excel or CSV file to get started")
-        
-        st.subheader("📋 Instructions")
+    # Instructions
+    with st.expander("📋 Instructions"):
         st.markdown("""
-        1. **Upload your file** - Excel (.xlsx, .xls) or CSV format
-        2. **Review data preview** - Check if your data looks correct
-        3. **Verify column detection** - Ensure columns are properly identified
-        4. **Generate labels** - Click the button to create your PDF
-        5. **Download** - Get your professional sticker labels
-        """)
+        ### How to use this tool:
         
-        st.subheader("💡 Tips")
-        st.markdown("""
-        - Use clear column headers like "Part No", "Description", "Location"
-        - For bus models, use "7M", "9M", "12M" format
-        - Include quantity information in "Qty/Bin" or "Qty/Veh" columns
-        - Location strings will be automatically parsed into components
-        """)
+        1. **Upload your file**: Choose an Excel (.xlsx, .xls) or CSV file containing your part data
+        2. **Required columns**: The tool will automatically detect columns for:
+           - Part Number (looks for columns containing 'PART', 'NO', 'NUM')
+           - Description (looks for 'DESC', 'NAME')
+           - Location (looks for 'LOC', 'POS', 'LOCATION')
+           - Quantity per Bin (looks for 'QTY/BIN', 'QTY')
+           - Quantity per Vehicle (looks for 'QTY/VEH', 'QTY_VEH')
+           - Bus Model (looks for 'BUS_MODEL', 'MODEL', 'BUS_TYPE')
+           - Store Location (looks for 'STORE' and 'LOC')
         
-        # Sample data format
-        st.subheader("📊 Sample Data Format")
-        sample_data = pd.DataFrame({
-            'Part No': ['ABC123', 'DEF456', 'GHI789'],
-            'Description': ['Engine Filter', 'Brake Pad Set', 'Oil Filter'],
-            'Location': ['A1_B2_C3', 'D4_E5_F6', 'G7_H8_I9'],
-            'Qty/Bin': [5, 10, 8],
-            'Qty/Veh': [2, 4, 1],
-            'Bus Model': ['9M', '12M', '7M']
-        })
-        st.dataframe(sample_data, use_container_width=True)
+        3. **Bus Model Detection**: The tool intelligently detects bus models (7M, 9M, 12M) from:
+           - Dedicated bus model columns
+           - Quantity fields with model info (e.g., "7M:2", "9M-3")
+           - Any column containing model information
+        
+        4. **Output**: Each row generates one sticker label with:
+           - Part number and description
+           - QR code with part information
+           - Location details (store and line locations)
+           - MTM boxes (7M, 9M, 12M) with detected quantities
+        
+        ### Features:
+        - **Smart column detection** - automatically finds relevant columns
+        - **Dynamic font sizing** - adjusts text size based on content length
+        - **QR code generation** - includes part details for easy scanning
+        - **Professional layout** - bordered stickers ready for printing
+        - **Bus model intelligence** - automatically fills MTM boxes based on detected models
+        """)
 
 if __name__ == "__main__":
     main()
