@@ -677,13 +677,13 @@ def generate_sticker_labels(excel_file_path, output_pdf_path, status_callback=No
         right_spacer_width = content_width - 3*mtm_box_width - qr_width - left_spacer_width
 
           # Combine MTM boxes and QR code in one row with better spacing
-        bottom_row = Table(
+        bottom_table = Table(
             [[mtm_table, "", qr_table, ""]],
             colWidths=[3*mtm_box_width, left_spacer_width, qr_width, right_spacer_width],
             rowHeights=[qr_height]
         )
 
-        bottom_row.setStyle(TableStyle([
+        bottom_table.setStyle(TableStyle([
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]))
