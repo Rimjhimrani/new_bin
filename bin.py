@@ -668,27 +668,22 @@ def generate_sticker_labels(excel_file_path, output_pdf_path, status_callback=No
             )
 
         qr_table.setStyle(TableStyle([
-            ('GRID', (0, 0), (-1, -1), 1.2, colors.Color(0, 0, 0, alpha=0.95)),  # Darker grid lines
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]))
 
-        # Bottom section layout
-        bottom_section_data = [
-            [mtm_table, qr_table]
-        ]
+        # Adjust spacing for better layout
+        left_spacer_width = 0.8*cm
+        right_spacer_width = content_width - 3*mtm_box_width - qr_width - left_spacer_width
 
-        # Calculate remaining width for spacing
-        remaining_width = content_width - (mtm_box_width * 3) - qr_width
-        spacing_width = remaining_width / 2
-
-        bottom_table = Table(
-            bottom_section_data,
-            colWidths=[mtm_box_width * 3, qr_width],
-            rowHeights=[max(mtm_row_height, qr_height)]
+          # Combine MTM boxes and QR code in one row with better spacing
+        bottom_row = Table(
+            [[mtm_table, "", qr_table, ""]],
+            colWidths=[3*mtm_box_width, left_spacer_width, qr_width, right_spacer_width],
+            rowHeights=[qr_height]
         )
 
-        bottom_table.setStyle(TableStyle([
+        bottom_row.setStyle(TableStyle([
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]))
