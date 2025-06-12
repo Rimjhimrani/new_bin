@@ -112,7 +112,7 @@ def get_dynamic_description_style(text):
         name='DynamicDescription',
         fontName='Helvetica',
         fontSize=font_size,
-        alignment=TA_LEFT,
+        alignment=TA_CENTER,
         leading=leading
     )
 
