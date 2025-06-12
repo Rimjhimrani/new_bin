@@ -69,17 +69,17 @@ def get_dynamic_part_no_style(text):
         font_size = 12
         leading = 14
     elif text_length <= 25:
-        font_size = 10
+        font_size = 12
         leading = 12
     else:
-        font_size = 8
+        font_size = 11
         leading = 10
     
     return ParagraphStyle(
         name='DynamicPartNo',
         fontName='Helvetica-Bold',
         fontSize=font_size,
-        alignment=TA_CENTER,
+        alignment=TA_left,
         leading=leading
     )
 
