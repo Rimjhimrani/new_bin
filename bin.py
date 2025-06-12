@@ -79,7 +79,7 @@ def get_dynamic_part_no_style(text):
         name='DynamicPartNo',
         fontName='Helvetica-Bold',
         fontSize=font_size,
-        alignment=TA_left,
+        alignment=TA_LEFT,
         leading=leading
     )
 
