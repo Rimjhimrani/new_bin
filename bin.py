@@ -459,6 +459,27 @@ def generate_sticker_labels(excel_file_path, output_pdf_path, status_callback=No
 
     content_width = CONTENT_BOX_WIDTH - 0.2*cm
     all_elements = []
+    
+    # ✅ INSERT SORTING HERE
+    rack_col = next((col for col in df.columns if col.strip().lower() == 'rack'), None)
+    rack_no_1st_col = next((col for col in df.columns if '1st' in col.lower()), None)
+    rack_no_2nd_col = next((col for col in df.columns if '2nd' in col.lower()), None)
+
+    if rack_col and rack_no_1st_col and rack_no_2nd_col:
+        df[rack_no_1st_col] = pd.to_numeric(df[rack_no_1st_col], errors='coerce')
+        df[rack_no_2nd_col] = pd.to_numeric(df[rack_no_2nd_col], errors='coerce')
+
+        df.sort_values(
+            by=[rack_col, rack_no_1st_col, rack_no_2nd_col],
+            ascending=[False, False, False],
+            inplace=True
+        )
+    else:
+        if status_callback:
+            status_callback("⚠️ Sorting skipped: could not find all rack-related columns.")
+        else:
+            st.warning("⚠️ Sorting skipped: could not find all rack-related columns.")
+
 
     # Process each row as a single sticker
     total_rows = len(df)
