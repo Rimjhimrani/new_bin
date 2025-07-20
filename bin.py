@@ -295,14 +295,12 @@ def extract_location_data_from_excel(row_data):
             # Try exact match first
             if name in row_data:
                 val = row_data[name]
-                if pd.notna(val) and str(val).lower() not in ['nan', 'none', 'null', '']:
-                    return str(val).strip()
+                return str(val) if pd.notna(val) and str(val).lower() != 'nan' else default
             # Try case-insensitive match
             for col in available_cols:
                 if isinstance(col, str) and col.upper() == name.upper():
                     val = row_data[col]
-                    if pd.notna(val) and str(val).lower() not in ['nan', 'none', 'null', '']:
-                        return str(val).strip()
+                    return str(val) if pd.notna(val) and str(val).lower() != 'nan' else default
         return default
     
     # Extract values with multiple possible column names
@@ -315,6 +313,7 @@ def extract_location_data_from_excel(row_data):
     cell = find_column_value(['Cell', 'CELL', 'cell'])
     
     return [bus_model, station_no, rack, rack_no_1st, rack_no_2nd, level, cell]
+
 
 def extract_store_location_data_from_excel(row_data):
     """Extract store location data from Excel row for Store Location"""
